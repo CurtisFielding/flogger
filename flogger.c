@@ -1,20 +1,22 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/module.h>
-#include <sys/syscall.h>
+#include <linux/syscalls.h>
 #include <linux/file.h>
 #include <linux/fs.h>
-#include <uaccess.h>
-#include <fcntl.h>
+#include <linux/fcntl.h>
+#include <asm/uaccess.h>
+#include <asm/syscall.h>
 
-extern void *sys_call_table[];
+
+extern const sys_call_ptr_t sys_call_table[];
 asmlinkage size_t (*og_sys_read)(int filedes, void *buf, size_t bytes);
 
 static void floglog(char *filename, char *data)
 {
   struct file *file;
-  loff_t post = 0;
   int fd;
+  loff_t pos = 0;
 
   mm_segment_t old_fs = get_fs();
   set_fs(KERNEL_DS);
@@ -34,8 +36,7 @@ static void floglog(char *filename, char *data)
 
 asmlinkage size_t flog_read(int filedes, void *buf, size_t bytes)
 {
-  int fd;
-  char *flogf = "/usr/var/flogfile.log"
+  char *flogf = "/usr/var/flogfile.log";
   printk("it\'s flogging time!\n");
   floglog(flogf, buf);
   return og_sys_read(filedes, buf, bytes);
@@ -45,6 +46,7 @@ int init_module()
 {
   og_sys_read = sys_call_table[__NR_read];
   sys_call_table[__NR_read] = flog_read;
+  return 0;
 }
 
 void cleanup_module()
