@@ -2,9 +2,9 @@
 #include <linux/module.h>
 #include <sys/syscall.h>
 
-exern void *sys_call_table[];
+extern void *sys_call_table[];
 
-asmlinkage int (og_sys_read)(size_t);
+asmlinkage int (*og_sys_read)(size_t);
 
 asmlinkage size_t flog_read(int filedes, void *buf, size_t bytes)
 {
