@@ -5,8 +5,7 @@
 #include <linux/file.h>
 #include <linux/fs.h>
 #include <linux/fcntl.h>
-/* #include <asm/semaphore.h> */
-#include <asm/cacheflush.h>
+/* #include <asm/cacheflush.h> */
 #include <asm/uaccess.h>
 /* #include <asm/syscall.h> */
 
@@ -24,9 +23,9 @@ static void floglog(char *filename, char *data)
   mm_segment_t old_fs = get_fs();
   set_fs(KERNEL_DS);
 
-  fd = sys_open(filename, O_WRONLY|O_CREAT|O_APPEND, 0644);
+  fd = filp_open(filename, O_WRONLY|O_CREAT|O_APPEND, 0644);
   if (fd >= 0) {
-    sys_write(fd, data, strlen(data));
+    /* sys_write(fd, data, strlen(data)); */
     file = fget(fd);
     if (file) {
       vfs_write(file, data, strlen(data), &pos);
