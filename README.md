@@ -1,4 +1,4 @@
-I wouldn't add this module if I were you.
+Causes kernel panics at the moment; do not use. 
 
 Short term plans include replacing the read syscall with a version of my own: one that writes all passed buffers to a log file somewhere. 
 
